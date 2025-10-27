@@ -4,6 +4,7 @@ import cors from 'cors';
 import connectDB from './config/db.js';
 // Importar rutas
 import adminRoutes from './routes/adminRoutes.js';
+import productRoutes from './routes/productRoutes.js';
 
 // Cargar variables de entorno
 dotenv.config();
@@ -25,6 +26,8 @@ app.use(express.json());
 // Todas las rutas que definimos en adminRoutes
 // ahora estarán bajo el prefijo /api/v1/admins
 app.use('/api/v1/admins', adminRoutes);
+// Rutas de Productos (CRUD del Inventario)
+app.use('/api/v1/products', productRoutes);
 
 // Ruta de prueba
 app.get('/api/v1', (req: Request, res: Response) => {
