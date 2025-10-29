@@ -2,14 +2,29 @@ import mongoose, { Document, Schema } from 'mongoose';
 import bcrypt from 'bcryptjs';
 
 // 1. Definimos la INTERFAZ (la forma de nuestro objeto en TypeScript)
+// Interfaz para redes sociales (opcional)
+interface ISocialMedia {
+    facebook?: string;
+    x?: string;
+    linkedin?: string;
+    instagram?: string;
+}
 // Usamos "select: false" en la contraseña para que NUNCA se devuelva
 // en las consultas a la API, a menos que lo pidamos explícitamente.
 export interface IAdmin extends Document {
     _id: mongoose.Types.ObjectId;
     first_name: string;
+    last_name: string;
     email: string;
     password_hash: string;
     role: 'admin' | 'gestor';
+    phone?: string; // <-- AÑADIDO (Opcional)
+    employeeId?: string; // <-- AÑADIDO (Opcional)
+    country?: string; // <-- AÑADIDO (Opcional)
+    city?: string; // <-- AÑADIDO (Opcional)
+    postalCode?: string; // <-- AÑADIDO (Opcional)
+    socialMedia?: ISocialMedia; // <-- AÑADIDO (Opcional)
+    profile_picture_url?: string; // <-- AÑADIDO (Opcional)
     comparePassword(candidatePassword: string): Promise<boolean>;
 }
 
@@ -19,6 +34,11 @@ const adminSchema: Schema = new Schema(
         first_name: {
             type: String,
             required: [true, 'El nombre es obligatorio'],
+            trim: true,
+        },
+        last_name: {
+            type: String,
+            required: [true, 'El apellido es obligatorio'],
             trim: true,
         },
         email: {
@@ -39,6 +59,20 @@ const adminSchema: Schema = new Schema(
             enum: ['admin', 'gestor'],
             default: 'gestor',
         },
+        phone: { type: String, trim: true },
+        // Usamos sparse: true para permitir valores nulos en un campo 'unique'
+        employeeId: { type: String, trim: true, unique: true, sparse: true },
+        country: { type: String, trim: true },
+        city: { type: String, trim: true },
+        postalCode: { type: String, trim: true },
+        socialMedia: {
+            facebook: { type: String, trim: true },
+            x: { type: String, trim: true },
+            linkedin: { type: String, trim: true },
+            instagram: { type: String, trim: true },
+        },
+        // --- AÑADIR ESTE CAMPO NUEVO (Opcional) ---
+        profile_picture_url: { type: String, trim: true },
     },
     {
         timestamps: true, // Añade createdAt y updatedAt

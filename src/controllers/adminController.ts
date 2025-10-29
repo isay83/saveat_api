@@ -9,10 +9,10 @@ import Admin, { IAdmin } from '../models/Admin.js'; // Importamos nuestro modelo
  */
 export const registerAdmin = async (req: Request, res: Response) => {
     // 1. Extraemos los datos del cuerpo de la petición
-    const { first_name, email, password, role } = req.body;
+    const { first_name, last_name, email, password, role } = req.body;
 
     // 2. Validación simple (en un proyecto real, se usa una librería)
-    if (!first_name || !email || !password) {
+    if (!first_name || !last_name || !email || !password) {
         return res.status(400).json({ message: 'Por favor, complete todos los campos obligatorios' });
     }
 
@@ -29,6 +29,7 @@ export const registerAdmin = async (req: Request, res: Response) => {
         // ¡Nuestro "pre-save hook" en el Modelo se encargará de encriptarlo!
         const admin: IAdmin = await Admin.create({
             first_name,
+            last_name,
             email,
             password_hash: password, // El hook pre-save lo encriptará
             role: role || 'gestor', // 'gestor' por defecto si no se especifica
@@ -44,8 +45,10 @@ export const registerAdmin = async (req: Request, res: Response) => {
                 admin: {
                     id: admin._id,
                     first_name: admin.first_name,
+                    last_name: admin.last_name,
                     email: admin.email,
                     role: admin.role,
+                    profile_picture_url: admin.profile_picture_url, // <-- AÑADIDO
                 },
             });
         } else {
@@ -92,13 +95,98 @@ export const loginAdmin = async (req: Request, res: Response) => {
                 admin: {
                     id: admin._id,
                     first_name: admin.first_name,
+                    last_name: admin.last_name,
                     email: admin.email,
                     role: admin.role,
+                    profile_picture_url: admin.profile_picture_url, // <-- AÑADIDO
                 },
             });
         } else {
             // 4b. Fallo. Damos un mensaje genérico por seguridad
             res.status(401).json({ message: 'Email o contraseña inválidos' });
+        }
+    } catch (error) {
+        if (error instanceof Error) {
+            res.status(500).json({ message: 'Error del servidor', error: error.message });
+        } else {
+            res.status(500).json({ message: 'Error del servidor desconocido' });
+        }
+    }
+};
+
+/**
+ * @desc    Obtener el perfil del admin logueado
+ * @route   GET /api/v1/admins/profile
+ * @access  Privado (Admin/Gestor)
+ */
+export const getAdminProfile = async (req: Request, res: Response) => {
+    // El middleware 'protect' ya buscó al admin y lo adjuntó a req.admin
+    if (!req.admin) {
+        return res.status(404).json({ message: 'Administrador no encontrado' });
+    }
+    // Devolvemos el perfil completo
+    res.status(200).json(req.admin);
+};
+
+/**
+ * @desc    Actualizar el perfil del admin logueado
+ * @route   PUT /api/v1/admins/profile
+ * @access  Privado (Admin/Gestor)
+ */
+export const updateAdminProfile = async (req: Request, res: Response) => {
+    if (!req.admin) {
+        return res.status(404).json({ message: 'Administrador no encontrado (token)' });
+    }
+
+    try {
+        // Buscamos al admin por su ID desde el token para obtener el documento completo
+        const admin = await Admin.findById(req.admin._id);
+
+        if (admin) {
+            // Actualizamos solo los campos que el usuario envíe
+            admin.first_name = req.body.first_name || admin.first_name;
+            admin.last_name = req.body.last_name || admin.last_name;
+            admin.phone = req.body.phone || admin.phone;
+            admin.employeeId = req.body.employeeId || admin.employeeId;
+            admin.country = req.body.country || admin.country;
+            admin.city = req.body.city || admin.city;
+            admin.postalCode = req.body.postalCode || admin.postalCode;
+
+            // --- AÑADIR LÓGICA PARA GUARDAR LA URL DE LA IMAGEN ---
+            // Si el frontend envía una nueva URL, la guardamos.
+            // Si no la envía, mantenemos la existente (o undefined).
+            if (req.body.profile_picture_url !== undefined) {
+                admin.profile_picture_url = req.body.profile_picture_url;
+            }
+            // --- FIN DEL CAMBIO ---
+
+            // Actualizar redes sociales (como objeto anidado)
+            if (req.body.socialMedia) {
+                // Usamos optional chaining (?.) por si admin.socialMedia no existe
+                admin.socialMedia = {
+                    facebook: req.body.socialMedia.facebook || admin.socialMedia?.facebook,
+                    x: req.body.socialMedia.x || admin.socialMedia?.x,
+                    linkedin: req.body.socialMedia.linkedin || admin.socialMedia?.linkedin,
+                    instagram: req.body.socialMedia.instagram || admin.socialMedia?.instagram,
+                };
+            }
+
+            // Si el email cambia, debemos verificar que no esté en uso
+            if (req.body.email && req.body.email !== admin.email) {
+                const emailExists = await Admin.findOne({ email: req.body.email });
+                if (emailExists) {
+                    return res.status(400).json({ message: 'Ese email ya está en uso' });
+                }
+                admin.email = req.body.email;
+            }
+
+            // Guardamos los cambios
+            const updatedAdmin: IAdmin = await admin.save();
+
+            // Devolvemos el perfil actualizado
+            res.status(200).json(updatedAdmin);
+        } else {
+            res.status(404).json({ message: 'Administrador no encontrado (base de datos)' });
         }
     } catch (error) {
         if (error instanceof Error) {
