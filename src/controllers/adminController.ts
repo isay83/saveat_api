@@ -147,7 +147,6 @@ export const updateAdminProfile = async (req: Request, res: Response) => {
             admin.first_name = req.body.first_name || admin.first_name;
             admin.last_name = req.body.last_name || admin.last_name;
             admin.phone = req.body.phone || admin.phone;
-            admin.employeeId = req.body.employeeId || admin.employeeId;
             admin.country = req.body.country || admin.country;
             admin.city = req.body.city || admin.city;
             admin.postalCode = req.body.postalCode || admin.postalCode;
