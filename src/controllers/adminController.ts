@@ -69,7 +69,7 @@ export const registerAdmin = async (req: Request, res: Response) => {
  * @access  Público
  */
 export const loginAdmin = async (req: Request, res: Response) => {
-    const { email, password } = req.body;
+    const { email, password, rememberMe } = req.body;
 
     // 1. Validación simple
     if (!email || !password) {
@@ -87,7 +87,7 @@ export const loginAdmin = async (req: Request, res: Response) => {
         // Usamos el método 'comparePassword' que creamos en el Modelo
         if (admin && (await admin.comparePassword(password))) {
             // 4. ¡Éxito! Generamos un token
-            const token = generateToken(admin._id.toString(), admin.role);
+            const token = generateToken(admin._id.toString(), admin.role, rememberMe);
 
             res.json({
                 message: 'Inicio de sesión exitoso',
@@ -198,8 +198,12 @@ export const updateAdminProfile = async (req: Request, res: Response) => {
 
 // --- Función de Utilidad ---
 // Generador de JSON Web Token (JWT)
-const generateToken = (id: string, role: string) => {
+const generateToken = (id: string, role: string, rememberMe: boolean = false) => {
+    // Si 'rememberMe' es true, el token dura 7 días.
+    // Si es false, dura 8 horas (la sesión por defecto).
+    const expiresIn = rememberMe ? '7d' : '8h';
+
     return jwt.sign({ id, role }, process.env.JWT_SECRET as string, {
-        expiresIn: '8h', // El token expirará en 8 horas
+        expiresIn: expiresIn, // Usamos la duración variable
     });
 };

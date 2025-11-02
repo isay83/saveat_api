@@ -5,6 +5,7 @@ import connectDB from './config/db.js';
 // Importar rutas
 import adminRoutes from './routes/adminRoutes.js';
 import productRoutes from './routes/productRoutes.js';
+import donorRoutes from './routes/donorRoutes.js';
 
 // Cargar variables de entorno
 dotenv.config();
@@ -28,6 +29,8 @@ app.use(express.json());
 app.use('/api/v1/admins', adminRoutes);
 // Rutas de Productos (CRUD del Inventario)
 app.use('/api/v1/products', productRoutes);
+// Rutas de Donantes (CRUD de Donantes)
+app.use('/api/v1/donors', donorRoutes);
 
 // Ruta de prueba
 app.get('/api/v1', (req: Request, res: Response) => {
