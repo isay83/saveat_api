@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import Admin, { IAdmin } from '../models/Admin.js'; // Importamos nuestro modelo
+import { count } from 'console';
 
 /**
  * @desc    Registrar un nuevo administrador
@@ -39,17 +40,16 @@ export const registerAdmin = async (req: Request, res: Response) => {
         if (admin) {
             const token = generateToken(admin._id.toString(), admin.role);
 
+            // --- MODIFICACIÓN AQUÍ ---
+            // En lugar de crear un objeto personalizado,
+            // clona el objeto admin y quítale la contraseña.
+            const adminObject = admin.toObject();
+            delete adminObject.password_hash; // Asegurarse de no enviarla
+
             res.status(201).json({
                 message: 'Administrador registrado exitosamente',
                 token,
-                admin: {
-                    id: admin._id,
-                    first_name: admin.first_name,
-                    last_name: admin.last_name,
-                    email: admin.email,
-                    role: admin.role,
-                    profile_picture_url: admin.profile_picture_url, // <-- AÑADIDO
-                },
+                admin: adminObject, // <-- Enviar el objeto completo
             });
         } else {
             res.status(400).json({ message: 'Datos de administrador inválidos' });
@@ -97,8 +97,14 @@ export const loginAdmin = async (req: Request, res: Response) => {
                     first_name: admin.first_name,
                     last_name: admin.last_name,
                     email: admin.email,
+                    phone: admin.phone,
                     role: admin.role,
                     profile_picture_url: admin.profile_picture_url, // <-- AÑADIDO
+                    employeeId: admin.employeeId,
+                    country: admin.country,
+                    city: admin.city,
+                    postalCode: admin.postalCode,
+                    socialMedia: admin.socialMedia,
                 },
             });
         } else {
