@@ -6,6 +6,7 @@ import connectDB from './config/db.js';
 import adminRoutes from './routes/adminRoutes.js';
 import productRoutes from './routes/productRoutes.js';
 import donorRoutes from './routes/donorRoutes.js';
+import reservationRoutes from './routes/reservationRoutes.js';
 
 // Cargar variables de entorno
 dotenv.config();
@@ -31,6 +32,8 @@ app.use('/api/v1/admins', adminRoutes);
 app.use('/api/v1/products', productRoutes);
 // Rutas de Donantes (CRUD de Donantes)
 app.use('/api/v1/donors', donorRoutes);
+// Rutas de Reservas (CRUD de Reservas)
+app.use('/api/v1/reservations', reservationRoutes);
 
 // Ruta de prueba
 app.get('/api/v1', (req: Request, res: Response) => {
