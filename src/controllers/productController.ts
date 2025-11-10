@@ -133,3 +133,79 @@ export const deleteProduct = async (req: Request, res: Response) => {
         }
     }
 };
+
+// --- INICIO DE NUEVAS FUNCIONES PÚBLICAS ---
+
+/**
+ * @desc    Obtener productos (Público, para el e-commerce)
+ * @route   GET /api/v1/products
+ * @access  Público
+ */
+export const getPublicProducts = async (req: Request, res: Response) => {
+    try {
+        const pageSize = 12; // 12 productos por página
+        const page = Number(req.query.page) || 1;
+
+        // Filtros de query
+        const keyword = req.query.search ? {
+            name: {
+                $regex: req.query.search,
+                $options: 'i' // Insensible a mayúsculas
+            }
+        } : {};
+
+        const category = req.query.category ? {
+            category: req.query.category
+        } : {};
+
+        // --- Filtro de seguridad ---
+        // El público SÓLO puede ver productos 'disponibles' y con stock > 0
+        const publicFilter = {
+            status: 'disponible',
+            quantity_available: { $gt: 0 },
+            ...keyword,
+            ...category
+        };
+        // --- Fin del filtro ---
+
+        const count = await Product.countDocuments(publicFilter);
+        const products = await Product.find(publicFilter)
+            .limit(pageSize)
+            .skip(pageSize * (page - 1));
+
+        res.json({ products, page, pages: Math.ceil(count / pageSize) });
+
+    } catch (error) {
+        if (error instanceof Error) {
+            res.status(500).json({ message: 'Error del servidor', error: error.message });
+        } else {
+            res.status(500).json({ message: 'Error del servidor desconocido' });
+        }
+    }
+};
+
+/**
+ * @desc    Obtener un solo producto (Público)
+ * @route   GET /api/v1/products/public/:id
+ * @access  Público
+ */
+export const getPublicProductById = async (req: Request, res: Response) => {
+    try {
+        const product: IProduct | null = await Product.findById(req.params.id);
+
+        // Validamos que el producto exista y esté 'disponible'
+        if (product && product.status === 'disponible') {
+            res.status(200).json(product);
+        } else {
+            res.status(404).json({ message: 'Producto no encontrado o no disponible' });
+        }
+    } catch (error) {
+        if (error instanceof Error) {
+            res.status(500).json({ message: 'Error del servidor', error: error.message });
+        } else {
+            res.status(500).json({ message: 'Error del servidor desconocido' });
+        }
+    }
+};
+
+// --- FIN DE NUEVAS FUNCIONES PÚBLICAS ---

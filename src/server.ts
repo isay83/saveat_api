@@ -7,6 +7,9 @@ import adminRoutes from './routes/adminRoutes.js';
 import productRoutes from './routes/productRoutes.js';
 import donorRoutes from './routes/donorRoutes.js';
 import reservationRoutes from './routes/reservationRoutes.js';
+import userRoutes from './routes/userRoutes.js'; // --- NUEVO ---
+import cartRoutes from './routes/cartRoutes.js'; // --- NUEVO ---
+import checkoutRoutes from './routes/checkoutRoutes.js'; // --- NUEVO ---
 
 // Cargar variables de entorno
 dotenv.config();
@@ -22,18 +25,19 @@ app.use(express.json());
 
 // --- Definir Rutas con Versión ---
 // Todas las rutas que creemos ahora colgarán de /api/v1
-// Ejemplo: app.use('/api/v1/products', productRoutes);
-// Ejemplo: app.use('/api/v1/admins', adminRoutes);
 
-// Todas las rutas que definimos en adminRoutes
-// ahora estarán bajo el prefijo /api/v1/admins
-app.use('/api/v1/admins', adminRoutes);
-// Rutas de Productos (CRUD del Inventario)
-app.use('/api/v1/products', productRoutes);
-// Rutas de Donantes (CRUD de Donantes)
-app.use('/api/v1/donors', donorRoutes);
-// Rutas de Reservas (CRUD de Reservas)
-app.use('/api/v1/reservations', reservationRoutes);
+// --- NUEVO: Rutas Públicas de Clientes ---
+app.use('/api/v1/users', userRoutes); // Para login/registro de clientes
+app.use('/api/v1/cart', cartRoutes); // Para el carrito de compras
+app.use('/api/v1/checkout', checkoutRoutes); // Para el proceso de pago
+
+// --- Rutas de Administración ---
+app.use('/api/v1/admins', adminRoutes); // Login/perfil de admins
+app.use('/api/v1/donors', donorRoutes); // CRUD de Donantes
+app.use('/api/v1/reservations', reservationRoutes); // CRUD de Reservas (Admin)
+
+// --- Rutas Mixtas (Públicas y de Admin) ---
+app.use('/api/v1/products', productRoutes); // Contiene GET / y GET /admin
 
 // Ruta de prueba
 app.get('/api/v1', (req: Request, res: Response) => {

@@ -2,6 +2,7 @@ import mongoose, { Document, Schema } from 'mongoose';
 
 // 1. Define la INTERFAZ (la forma del objeto en TypeScript)
 export interface IProduct extends Document {
+    _id: mongoose.Types.ObjectId;
     name: string;
     description?: string;
     image_url?: string;
