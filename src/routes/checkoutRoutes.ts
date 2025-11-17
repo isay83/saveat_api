@@ -7,4 +7,7 @@ const router = express.Router();
 // POST /api/v1/checkout/create-payment-intent
 router.post('/create-payment-intent', protectUser, createPaymentIntent);
 
+// La ruta del webhook se elimina de este archivo.
+// Se define directamente en server.ts para usar el middleware 'express.raw()'.
+
 export default router;

@@ -12,7 +12,7 @@ const generateToken = (id: string) => {
 
 /**
  * @desc    Registrar un nuevo cliente (User)
- * @route   POST /api/v1/user/register
+ * @route   POST /api/v1/users/register
  * @access  Público
  */
 export const registerUser = async (req: Request, res: Response) => {
@@ -67,7 +67,7 @@ export const registerUser = async (req: Request, res: Response) => {
 
 /**
  * @desc    Autenticar (Login) un cliente
- * @route   POST /api/v1/user/login
+ * @route   POST /api/v1/users/login
  * @access  Público
  */
 export const loginUser = async (req: Request, res: Response) => {

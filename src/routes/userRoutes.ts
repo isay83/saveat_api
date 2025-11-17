@@ -7,11 +7,11 @@ import {
 const router = express.Router();
 
 // Ruta para registrar un nuevo cliente
-// POST /api/v1/user/register
+// POST /api/v1/users/register
 router.post('/register', registerUser);
 
 // Ruta para iniciar sesión de un cliente
-// POST /api/v1/user/login
+// POST /api/v1/users/login
 router.post('/login', loginUser);
 
 export default router;

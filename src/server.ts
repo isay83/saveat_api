@@ -11,6 +11,9 @@ import userRoutes from './routes/userRoutes.js'; // --- NUEVO ---
 import cartRoutes from './routes/cartRoutes.js'; // --- NUEVO ---
 import checkoutRoutes from './routes/checkoutRoutes.js'; // --- NUEVO ---
 
+// Importamos el controlador del webhook directamente
+import { handleStripeWebhook } from './controllers/checkoutController.js';
+
 // Cargar variables de entorno
 dotenv.config();
 
@@ -21,6 +24,16 @@ const app: Express = express();
 
 // Middlewares
 app.use(cors());
+// --- INICIO: MODIFICACIÓN CRÍTICA PARA STRIPE ---
+// Esta ruta de webhook debe ir ANTES de express.json()
+// Usamos express.raw() para obtener el body como un Buffer y no como JSON
+app.post(
+    '/api/v1/checkout/webhook',
+    express.raw({ type: 'application/json' }), // Lee el body en formato "raw"
+    handleStripeWebhook // Llama directamente al controlador
+);
+// --- FIN: MODIFICACIÓN CRÍTICA ---
+
 app.use(express.json());
 
 // --- Definir Rutas con Versión ---
