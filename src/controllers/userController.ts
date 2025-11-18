@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import User, { IUser } from '../models/User.js'; // Importamos el modelo de cliente
+import Cart from '../models/Cart.js';
+import Reservation from '../models/Reservation.js';
 
 // --- Función de Utilidad (local) ---
 // Generador de JSON Web Token (JWT) para Clientes
@@ -108,5 +110,59 @@ export const loginUser = async (req: Request, res: Response) => {
         } else {
             res.status(500).json({ message: 'Error del servidor desconocido' });
         }
+    }
+};
+
+/**
+ * @desc    Obtener el uso de reservaciones diarias del usuario
+ * @route   GET /api/v1/user/usage
+ * @access  Privado (Cliente)
+ */
+export const getUserUsage = async (req: Request, res: Response) => {
+    const userId = req.user?._id;
+
+    if (!userId) {
+        return res.status(401).json({ message: 'No autorizado' });
+    }
+
+    try {
+        // 1. OBTENER EL LÍMITE DEL USUARIO
+        const user = await User.findById(userId).select('reservation_limit');
+        if (!user) {
+            return res.status(404).json({ message: 'Usuario no encontrado' });
+        }
+        const dailyLimit = user.reservation_limit;
+
+        // 2. OBTENER USO DIARIO (Pedidos 'Reservation' ya hechos hoy)
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Medianoche de hoy
+
+        const reservationsToday = await Reservation.find({
+            user_id: userId,
+            createdAt: { $gte: today },
+        });
+        const quantityReservedToday = reservationsToday.reduce(
+            (acc, r) => acc + r.quantity_reserved,
+            0
+        );
+
+        // 3. OBTENER USO ACTUAL (Items en el 'Cart' ahora mismo)
+        const itemsInCart = await Cart.find({ user_id: userId });
+        const quantityInCart = itemsInCart.reduce(
+            (acc, i) => acc + i.quantity,
+            0
+        );
+
+        const totalUsed = quantityReservedToday + quantityInCart;
+
+        // 4. Devolver el resumen
+        res.status(200).json({
+            limit: dailyLimit,
+            used: totalUsed,
+            remaining: dailyLimit - totalUsed,
+        });
+    } catch (error: any) {
+        console.error("Error al obtener uso diario:", error);
+        res.status(500).json({ message: 'Error del servidor', error: error.message });
     }
 };

@@ -42,7 +42,7 @@ app.use(express.json());
 // Todas las rutas que creemos ahora colgarán de /api/v1
 
 // --- NUEVO: Rutas Públicas de Clientes ---
-app.use('/api/v1/users', userRoutes); // Para login/registro de clientes
+app.use('/api/v1/users', userRoutes); // Para login/registro de clientes y datos de usuario
 app.use('/api/v1/cart', cartRoutes); // Para el carrito de compras
 app.use('/api/v1/checkout', checkoutRoutes); // Para el proceso de pago
 
