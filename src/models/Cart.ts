@@ -45,7 +45,7 @@ const cartSchema: Schema = new Schema(
 // Esto le dice a MongoDB que borre automáticamente cualquier documento
 // 0 segundos después de que se cumpla la hora en 'expires_at'.
 // Esto limpia los carritos abandonados sin necesidad de un cron job.
-cartSchema.index({ expires_at: 1 }, { expireAfterSeconds: 0 });
+// cartSchema.index({ expires_at: 1 }, { expireAfterSeconds: 0 });
 
 // Índice para buscar rápidamente el carrito de un usuario
 cartSchema.index({ user_id: 1 });

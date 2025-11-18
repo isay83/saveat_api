@@ -15,6 +15,55 @@ declare global {
 
 const CART_DURATION_MS = 15 * 60 * 1000; // 15 minutos
 
+// --- INICIO DE NUEVA FUNCIÓN ---
+/**
+ * @desc    Limpia carritos expirados y devuelve el stock.
+ * Esta función está diseñada para ser llamada por un Cron Job.
+ */
+export const handleExpiredCarts = async () => {
+    console.log('Cron Job: Buscando carritos expirados...');
+    const now = new Date();
+
+    // 1. Encontrar todos los carritos que han expirado
+    const expiredCarts = await Cart.find({ expires_at: { $lte: now } });
+
+    if (expiredCarts.length === 0) {
+        console.log('Cron Job: No hay carritos expirados.');
+        return;
+    }
+
+    console.log(`Cron Job: Se encontraron ${expiredCarts.length} carritos para limpiar.`);
+
+    // 2. Procesar cada carrito uno por uno con una transacción
+    for (const cart of expiredCarts) {
+        const session = await mongoose.startSession();
+        session.startTransaction();
+        try {
+            // 2a. Devolver el stock al producto
+            await Product.updateOne(
+                { _id: cart.product_id },
+                { $inc: { quantity_available: cart.quantity } },
+                { session }
+            );
+
+            // 2b. Eliminar el carrito
+            await Cart.findByIdAndDelete(cart._id, { session });
+
+            // 2c. Confirmar
+            await session.commitTransaction();
+            console.log(`Cron Job: Carrito ${cart._id} eliminado, stock devuelto.`);
+
+        } catch (error) {
+            // Si algo falla, revertir y seguir con el siguiente
+            await session.abortTransaction();
+            console.error(`Cron Job: Error al procesar carrito ${cart._id}`, error);
+        } finally {
+            session.endSession();
+        }
+    }
+};
+// --- FIN DE NUEVA FUNCIÓN ---
+
 /**
  * @desc    Añadir un producto al carrito (o actualizar cantidad)
  * @route   POST /api/v1/cart
@@ -89,7 +138,15 @@ export const addToCart = async (req: Request, res: Response) => {
         // 5. ¡Éxito! Confirmar la transacción
         await session.commitTransaction();
 
-        res.status(200).json(cartItem);
+        // Antes de responder, POPULAMOS el item del carrito
+        // para que el frontend reciba todos los datos del producto.
+        if (cartItem) {
+            const populatedCartItem = await Cart.findById(cartItem._id)
+                .populate('product_id');
+            res.status(200).json(populatedCartItem);
+        }
+
+
     } catch (error) {
         // 6. ¡Fallo! Revertir todos los cambios
         await session.abortTransaction();

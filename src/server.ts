@@ -10,9 +10,11 @@ import reservationRoutes from './routes/reservationRoutes.js';
 import userRoutes from './routes/userRoutes.js'; // --- NUEVO ---
 import cartRoutes from './routes/cartRoutes.js'; // --- NUEVO ---
 import checkoutRoutes from './routes/checkoutRoutes.js'; // --- NUEVO ---
-
-// Importamos el controlador del webhook directamente
+// Importar el controlador del webhook directamente
 import { handleStripeWebhook } from './controllers/checkoutController.js';
+// Importar cron para tareas programadas
+import cron from 'node-cron';
+import { handleExpiredCarts } from './controllers/cartController.js';
 
 // Cargar variables de entorno
 dotenv.config();
@@ -61,4 +63,9 @@ app.get('/api/v1', (req: Request, res: Response) => {
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
     console.log(`Servidor (TypeScript) corriendo en el puerto ${PORT}`);
+
+    // Tarea programada (Cron Job)
+    // Se ejecuta 'cada 5 minutos'
+    console.log('Iniciando Cron Job para limpiar carritos expirados...');
+    cron.schedule('*/5 * * * *', handleExpiredCarts);
 });
