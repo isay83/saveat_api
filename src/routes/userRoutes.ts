@@ -3,6 +3,8 @@ import {
     registerUser,
     loginUser,
     getUserUsage,
+    getUserProfile,
+    updateUserProfile,
 } from '../controllers/userController.js';
 import { protectUser } from '../middleware/authMiddleware.js';
 
@@ -16,7 +18,15 @@ router.post('/register', registerUser);
 // POST /api/v1/users/login
 router.post('/login', loginUser);
 
-// GET /api/v1/user/usage
+// GET /api/v1/users/usage
 router.get('/usage', protectUser, getUserUsage);
+
+// Rutas para obtener y actualizar el perfil del usuario
+// GET /api/v1/users/profile
+// PUT /api/v1/users/profile
+router
+    .route('/profile')
+    .get(protectUser, getUserProfile)
+    .put(protectUser, updateUserProfile);
 
 export default router;

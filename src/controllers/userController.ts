@@ -166,3 +166,80 @@ export const getUserUsage = async (req: Request, res: Response) => {
         res.status(500).json({ message: 'Error del servidor', error: error.message });
     }
 };
+
+/**
+ * @desc    Obtener perfil del usuario
+ * @route   GET /api/v1/users/profile
+ * @access  Privado
+ */
+export const getUserProfile = async (req: Request, res: Response) => {
+    const userId = req.user?._id;
+
+    if (!userId) {
+        return res.status(401).json({ message: 'No autorizado' });
+    }
+
+    try {
+        const user = await User.findById(userId).select('-password_hash'); // Excluir contraseña
+
+        if (user) {
+            res.json({
+                _id: user._id,
+                first_name: user.first_name,
+                last_name: user.last_name,
+                email: user.email,
+                postal_code: user.postal_code,
+                reservation_limit: user.reservation_limit,
+                // Puedes añadir más campos si los tienes en tu modelo
+            });
+        } else {
+            res.status(404).json({ message: 'Usuario no encontrado' });
+        }
+    } catch (error) {
+        res.status(500).json({ message: 'Error del servidor' });
+    }
+};
+
+/**
+ * @desc    Actualizar perfil del usuario
+ * @route   PUT /api/v1/users/profile
+ * @access  Privado
+ */
+export const updateUserProfile = async (req: Request, res: Response) => {
+    const userId = req.user?._id;
+
+    if (!userId) {
+        return res.status(401).json({ message: 'No autorizado' });
+    }
+
+    try {
+        const user = await User.findById(userId);
+
+        if (user) {
+            // Actualizar campos permitidos
+            user.first_name = req.body.first_name || user.first_name;
+            user.last_name = req.body.last_name || user.last_name;
+            user.postal_code = req.body.postal_code || user.postal_code;
+
+            // Si quieres permitir cambiar contraseña:
+            if (req.body.password) {
+                user.password_hash = req.body.password; // El pre-save hook la hasheará
+            }
+
+            const updatedUser = await user.save();
+
+            res.json({
+                _id: updatedUser._id,
+                first_name: updatedUser.first_name,
+                last_name: updatedUser.last_name,
+                email: updatedUser.email,
+                postal_code: updatedUser.postal_code,
+                token: generateToken(updatedUser._id.toString()), // Opcional: renovar token
+            });
+        } else {
+            res.status(404).json({ message: 'Usuario no encontrado' });
+        }
+    } catch (error) {
+        res.status(500).json({ message: 'Error al actualizar perfil' });
+    }
+};
