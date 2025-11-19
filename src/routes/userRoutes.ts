@@ -5,6 +5,7 @@ import {
     getUserUsage,
     getUserProfile,
     updateUserProfile,
+    getUserOrders,
 } from '../controllers/userController.js';
 import { protectUser } from '../middleware/authMiddleware.js';
 
@@ -28,5 +29,8 @@ router
     .route('/profile')
     .get(protectUser, getUserProfile)
     .put(protectUser, updateUserProfile);
+
+// GET /api/v1/users/orders
+router.get('/orders', protectUser, getUserOrders);
 
 export default router;

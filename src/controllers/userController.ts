@@ -243,3 +243,31 @@ export const updateUserProfile = async (req: Request, res: Response) => {
         res.status(500).json({ message: 'Error al actualizar perfil' });
     }
 };
+
+/**
+ * @desc    Obtener historial de pedidos (reservaciones) del usuario
+ * @route   GET /api/v1/users/orders
+ * @access  Privado
+ */
+export const getUserOrders = async (req: Request, res: Response) => {
+    const userId = req.user?._id;
+
+    if (!userId) {
+        return res.status(401).json({ message: 'No autorizado' });
+    }
+
+    try {
+        // Buscamos las reservaciones de este usuario
+        // Ordenamos por fecha de creación (más recientes primero)
+        const orders = await Reservation.find({ user_id: userId })
+            .sort({ createdAt: -1 })
+            // Si quieres traer detalles del producto, usa populate
+            // (Asegúrate de que tu modelo Reservation tenga ref a Product)
+            .populate('product_id', 'name image_url unit');
+
+        res.json(orders);
+    } catch (error) {
+        console.error("Error al obtener pedidos:", error);
+        res.status(500).json({ message: 'Error del servidor al obtener pedidos' });
+    }
+};
