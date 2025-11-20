@@ -6,7 +6,6 @@ export interface ICart extends Document {
     user_id: Types.ObjectId; // Ref a 'User'
     product_id: Types.ObjectId; // Ref a 'Product'
     quantity: number;
-    expires_at: Date; // Campo para la expiración
     createdAt: Date;
 }
 
@@ -27,13 +26,6 @@ const cartSchema: Schema = new Schema(
             type: Number,
             required: true,
             min: [1, 'La cantidad mínima es 1'],
-        },
-        // Este campo es la clave para el 'carrito temporal'
-        expires_at: {
-            type: Date,
-            required: true,
-            // Por defecto, expira 15 minutos desde su creación/actualización
-            default: () => new Date(Date.now() + 15 * 60 * 1000),
         },
     },
     {
