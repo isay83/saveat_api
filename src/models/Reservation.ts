@@ -12,6 +12,10 @@ export interface IReservation extends Document {
     status: 'pendiente' | 'recogido' | 'cancelado' | 'expirado';
     pickup_deadline: Date;
     picked_up_at?: Date;
+    // --- NUEVOS CAMPOS ---
+    payment_method: 'card' | 'cash';
+    is_paid: boolean;
+    // --- FIN ---
     createdAt: Date;
 }
 
@@ -40,6 +44,19 @@ const reservationSchema: Schema = new Schema(
         },
         pickup_deadline: { type: Date, required: true },
         picked_up_at: { type: Date }, // Fecha en que se confirmó la recogida
+        // --- NUEVOS CAMPOS ---
+        payment_method: {
+            type: String,
+            enum: ['card', 'cash'],
+            default: 'card',
+            required: true
+        },
+        is_paid: {
+            type: Boolean,
+            default: false,
+            required: true
+        }
+        // --- FIN ---
     },
     {
         timestamps: true, // Añade createdAt y updatedAt
