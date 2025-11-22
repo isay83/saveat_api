@@ -40,6 +40,11 @@ export const confirmReservation = async (req: Request, res: Response) => {
             return res.status(400).json({ message: `La reserva ya ha sido ${reservation.status}` });
         }
 
+        // Marcar como pagado si es efectivo
+        if (reservation.payment_method === 'cash' && !reservation.is_paid) {
+            reservation.is_paid = true;
+        }
+
         reservation.status = 'recogido';
         reservation.picked_up_at = new Date();
         await reservation.save();
