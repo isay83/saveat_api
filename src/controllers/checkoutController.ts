@@ -7,9 +7,6 @@ import Product, { type IProduct } from '../models/Product.js';
 import Stripe from 'stripe';
 
 const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET as string;
-if (!endpointSecret && process.env.NODE_ENV !== 'test') {
-    console.error('ERROR: STRIPE_WEBHOOK_SECRET no está definido en .env');
-}
 
 // FUNCIÓN AUXILIAR CON RETRY LOGIC
 const _createOrderFromCart = async (
@@ -17,93 +14,74 @@ const _createOrderFromCart = async (
     cartItems: ICart[],
     paymentMethod: 'card' | 'cash',
     isPaid: boolean,
-    externalSession?: mongoose.ClientSession
+    session?: mongoose.ClientSession
 ) => {
-    const MAX_RETRIES = 3;
-    let attempt = 0;
 
-    while (attempt < MAX_RETRIES) {
-        attempt++;
-        const shouldManageSession = !externalSession;
-        const session = externalSession || await mongoose.startSession();
+    // Si no nos pasan sesión, creamos una local
+    const shouldManageSession = !session;
+    const localSession = session || await mongoose.startSession();
+
+    if (shouldManageSession) {
+        localSession.startTransaction();
+    }
+
+    try {
+        // Validación: Filtrar items sin producto
+        const validItems = cartItems.filter(item => item.product_id);
+
+        if (validItems.length === 0) {
+            return true;
+        }
+
+        // Calcular ventana de recolección
+        const minHours = Math.min(
+            ...validItems.map((item) => {
+                const product = item.product_id as unknown as IProduct;
+                return product?.pickup_window_hours || 24;
+            })
+        );
+        const pickup_deadline = new Date(Date.now() + minHours * 60 * 60 * 1000);
+
+        const newReservations = validItems.map((item) => {
+            const product = item.product_id as unknown as IProduct;
+
+            return {
+                user_id: new mongoose.Types.ObjectId(userId),
+                product_id: new mongoose.Types.ObjectId(product._id),
+                product_name: product.name || 'Producto sin nombre',
+                quantity_reserved: item.quantity,
+                unit: product.unit || 'unidad',
+                total_price: (product.price || 0) * item.quantity,
+                status: 'pendiente',
+                pickup_deadline: pickup_deadline,
+                payment_method: paymentMethod,
+                is_paid: isPaid,
+            };
+        });
+
+        await Reservation.insertMany(newReservations, { session: localSession });
+
+        // Borrar items del carrito
+        const cartIds = validItems.map(item => item._id);
+        // Usamos deleteMany con la sesión para asegurar consistencia
+        await Cart.deleteMany({ _id: { $in: cartIds }, user_id: userId }, { session: localSession });
 
         if (shouldManageSession) {
-            session.startTransaction();
+            await localSession.commitTransaction();
         }
 
-        try {
-            // Validación: Filtrar items sin producto
-            const validItems = cartItems.filter(item => item.product_id);
+        return true; // Éxito
 
-            if (validItems.length === 0) {
-                // Si no hay items válidos, no lanzamos error grave, solo salimos.
-                // Esto evita el error 500 si el carrito ya estaba vacío.
-                if (shouldManageSession) await session.abortTransaction();
-                return false;
-            }
-
-            // Calcular ventana de recolección
-            const minHours = Math.min(
-                ...validItems.map((item) => {
-                    const product = item.product_id as unknown as IProduct;
-                    return product?.pickup_window_hours || 24;
-                })
-            );
-            const pickup_deadline = new Date(Date.now() + minHours * 60 * 60 * 1000);
-
-            const newReservations = validItems.map((item) => {
-                const product = item.product_id as unknown as IProduct;
-                const totalPrice = (product.price || 0) * item.quantity;
-
-                return {
-                    user_id: new mongoose.Types.ObjectId(userId),
-                    product_id: new mongoose.Types.ObjectId(product._id),
-                    product_name: product.name || 'Producto sin nombre',
-                    quantity_reserved: item.quantity,
-                    unit: product.unit || 'unidad',
-                    total_price: totalPrice,
-                    status: 'pendiente' as const,
-                    pickup_deadline: pickup_deadline,
-                    payment_method: paymentMethod,
-                    is_paid: isPaid,
-                };
-            });
-
-            await Reservation.insertMany(newReservations, { session });
-
-            // Borrar items del carrito
-            const cartIds = validItems.map(item => item._id);
-            await Cart.deleteMany({ _id: { $in: cartIds }, user_id: userId }, { session });
-
-            if (shouldManageSession) {
-                await session.commitTransaction();
-            }
-
-            return true; // Éxito
-
-        } catch (error: any) {
-            if (shouldManageSession) {
-                await session.abortTransaction();
-            }
-
-            // Si es un conflicto de escritura y tenemos reintentos disponibles...
-            if (error.code === 112 || error.code === 11000 || error.message.includes('Write conflict')) {
-                if (attempt < MAX_RETRIES) {
-                    console.warn(`[_createOrderFromCart] Conflicto de escritura. Reintentando (${attempt}/${MAX_RETRIES})...`);
-                    await new Promise(resolve => setTimeout(resolve, 100 * attempt)); // Espera exponencial
-                    continue; // Vuelve al inicio del while
-                }
-            }
-
-            // Si no es un conflicto o se acabaron los reintentos, lanza el error
-            console.error("[_createOrderFromCart] Error final:", error);
-            throw error;
-        } finally {
-            if (shouldManageSession) {
-                session.endSession();
-            }
+    } catch (error: any) {
+        if (shouldManageSession) {
+            await localSession.abortTransaction();
         }
-        break; // Si tuvo éxito, rompe el while
+        console.error("Error en _createOrderFromCart:", error);
+        throw error;
+    } finally {
+        if (shouldManageSession) {
+            localSession.endSession();
+        }
     }
 };
 
@@ -169,7 +147,6 @@ export const createPaymentIntent = async (req: Request, res: Response) => {
 // ... (Mantén createCashOrder y handleStripeWebhook igual, ya usan _createOrderFromCart)
 // Solo asegúrate de que handleStripeWebhook también use la versión importada de _createOrderFromCart
 export const createCashOrder = async (req: Request, res: Response) => {
-    // ... (Tu código existente está bien, usa _createOrderFromCart)
     const userId = req.user?._id;
     if (!userId) return res.status(401).json({ message: 'No autorizado' });
     try {
@@ -177,15 +154,13 @@ export const createCashOrder = async (req: Request, res: Response) => {
         const validItems = cartItems.filter(item => item.product_id);
         if (validItems.length === 0) return res.status(400).json({ message: 'Carrito vacío' });
         await _createOrderFromCart(userId.toString(), validItems, 'cash', false);
-        res.status(200).json({ message: 'Orden en efectivo registrada' });
+        res.status(200).json({ message: 'Orden en efectivo registrada', cartCleared: true });
     } catch (error: any) {
         res.status(500).json({ message: 'Error del servidor', error: error.message });
     }
 };
 
 export const handleStripeWebhook = async (req: Request, res: Response) => {
-    // ... (Tu código de webhook existente es correcto, solo asegúrate de que llame a la nueva _createOrderFromCart)
-    // ...
     const sig = req.headers['stripe-signature'] as string;
     let event: Stripe.Event;
     try {
@@ -204,19 +179,25 @@ export const handleStripeWebhook = async (req: Request, res: Response) => {
         }
         const cartIds = JSON.parse(paymentIntent.metadata.cartIds || '[]') as string[];
 
-        // No necesitamos transacción aquí porque _createOrderFromCart ya maneja su propia transacción
-        // y reintentos.
+        const session = await mongoose.startSession();
+        session.startTransaction();
+
         try {
-            const cartItems = await Cart.find({ _id: { $in: cartIds }, user_id: userId }).populate('product_id');
+            const cartItems = await Cart.find({ _id: { $in: cartIds }, user_id: userId }).populate('product_id').session(session);
             const validItems = cartItems.filter(item => item.product_id);
 
             if (validItems.length > 0) {
-                await _createOrderFromCart(userId, validItems, 'card', true);
-                console.log(`[Webhook] Orden creada para user ${userId}`);
+                await _createOrderFromCart(userId, validItems, 'card', true, session);
+                await session.commitTransaction();
+            } else {
+                await session.abortTransaction();
             }
         } catch (error) {
-            console.error("[Webhook] Error:", error);
+            await session.abortTransaction();
+            console.error("Webhook Error:", error);
             return res.status(500).json({ message: 'Error interno' });
+        } finally {
+            session.endSession();
         }
     }
     res.status(200).json({ received: true });
