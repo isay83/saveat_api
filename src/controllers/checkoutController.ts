@@ -5,6 +5,7 @@ import mongoose from 'mongoose';
 import Reservation from '../models/Reservation.js';
 import Product, { type IProduct } from '../models/Product.js';
 import Stripe from 'stripe';
+import { createSystemNotification } from './notificationController.js';
 
 const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET as string;
 
@@ -69,6 +70,25 @@ const _createOrderFromCart = async (
         if (shouldManageSession) {
             await localSession.commitTransaction();
         }
+
+        // --- INICIO: CREAR NOTIFICACIÓN ---
+        // Lo hacemos DESPUÉS del commit para asegurar que la reserva es real.
+        // No usamos 'await' crítico para no bloquear la respuesta al usuario si la notificación falla.
+        try {
+            const itemsCount = newReservations.length;
+            const totalCost = newReservations.reduce((sum, item) => sum + item.total_price, 0);
+
+            await createSystemNotification(
+                'Nueva Reserva',
+                `El usuario ${userId} ha realizado un pedido de ${itemsCount} productos por $${totalCost}. Método: ${paymentMethod}.`,
+                'reservation',
+                userId // Relacionamos la notificación con el usuario que compró
+            );
+        } catch (notifError) {
+            console.error("Error al enviar notificación de sistema:", notifError);
+            // No lanzamos error aquí para no afectar la experiencia del usuario final
+        }
+        // --- FIN: CREAR NOTIFICACIÓN ---
 
         return true; // Éxito
 

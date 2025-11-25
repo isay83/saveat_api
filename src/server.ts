@@ -10,11 +10,13 @@ import reservationRoutes from './routes/reservationRoutes.js';
 import userRoutes from './routes/userRoutes.js'; // --- NUEVO ---
 import cartRoutes from './routes/cartRoutes.js'; // --- NUEVO ---
 import checkoutRoutes from './routes/checkoutRoutes.js'; // --- NUEVO ---
+import notificationRoutes from './routes/notificationRoutes.js'; // --- NUEVO ---
 // Importar el controlador del webhook directamente
 import { handleStripeWebhook } from './controllers/checkoutController.js';
 // Importar cron para tareas programadas
 import cron from 'node-cron';
 import { handleExpiredCarts } from './controllers/cartController.js';
+import { startCronJobs } from './services/cronService.js';
 
 // Cargar variables de entorno
 dotenv.config();
@@ -53,6 +55,7 @@ app.use('/api/v1/reservations', reservationRoutes); // CRUD de Reservas (Admin)
 
 // --- Rutas Mixtas (Públicas y de Admin) ---
 app.use('/api/v1/products', productRoutes); // Contiene GET / y GET /admin
+app.use('/api/v1/notifications', notificationRoutes); // CRUD de Notificaciones
 
 // Ruta de prueba
 app.get('/api/v1', (req: Request, res: Response) => {
@@ -68,4 +71,5 @@ app.listen(PORT, () => {
     // Se ejecuta 'cada 5 minutos'
     console.log('Iniciando Cron Job para limpiar carritos expirados...');
     cron.schedule('*/5 * * * *', handleExpiredCarts);
+    startCronJobs();
 });
