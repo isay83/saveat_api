@@ -11,6 +11,7 @@ import userRoutes from './routes/userRoutes.js'; // --- NUEVO ---
 import cartRoutes from './routes/cartRoutes.js'; // --- NUEVO ---
 import checkoutRoutes from './routes/checkoutRoutes.js'; // --- NUEVO ---
 import notificationRoutes from './routes/notificationRoutes.js'; // --- NUEVO ---
+import analyticsRoutes from './routes/AnalyticsRoutes.js'; // --- NUEVO ---
 // Importar el controlador del webhook directamente
 import { handleStripeWebhook } from './controllers/checkoutController.js';
 // Importar cron para tareas programadas
@@ -56,6 +57,7 @@ app.use('/api/v1/reservations', reservationRoutes); // CRUD de Reservas (Admin)
 // --- Rutas Mixtas (Públicas y de Admin) ---
 app.use('/api/v1/products', productRoutes); // Contiene GET / y GET /admin
 app.use('/api/v1/notifications', notificationRoutes); // CRUD de Notificaciones
+app.use('/api/v1/analytics', analyticsRoutes); // Rutas de Analytics
 
 // Ruta de prueba
 app.get('/api/v1', (req: Request, res: Response) => {
